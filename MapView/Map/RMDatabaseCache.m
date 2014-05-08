@@ -123,7 +123,18 @@
         [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
 
         return nil;
-	}
+	} else {
+        // To comply with Apple guidelines we must exclude the DB cache from backups
+        // even if it's in the Documents directory. Apple's guidelines require this for
+        // any file that can be recreated via a download.
+        NSURL *URL = [[NSURL alloc] initFileURLWithPath:path];
+        NSError *error = nil;
+        BOOL success = [URL setResourceValue: [NSNumber numberWithBool: YES]
+                            forKey: NSURLIsExcludedFromBackupKey error: &error];
+        if(!success){
+            NSLog(@"Error excluding %@ from backup %@", [URL lastPathComponent], error);
+        }
+    }
 
     [_queue inDatabase:^(FMDatabase *db) {
         [db setCrashOnErrors:NO];
