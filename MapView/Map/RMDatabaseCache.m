@@ -26,8 +26,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #import "RMDatabaseCache.h"
-#import "FMDatabase.h"
-#import "FMDatabaseQueue.h"
+#import "FMDB.h"
 #import "RMTileImage.h"
 #import "RMTile.h"
 
@@ -186,7 +185,7 @@
 {
     _expiryPeriod = theExpiryPeriod;
     
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
 }
 
 - (unsigned long long)fileSize
@@ -237,13 +236,12 @@
             [_queue inDatabase:^(FMDatabase *db)
              {
                  BOOL result = [db executeUpdate:@"DELETE FROM ZCACHE WHERE last_used < ?", [NSDate dateWithTimeIntervalSinceNow:-_expiryPeriod]];
-                 
+
                  if (result)
                      result = [db executeUpdate:@"VACUUM"];
 
-                 if (result == NO)
+                 if ( ! result)
                      RMLog(@"Error expiring cache");
-
              }];
 
             [_writeQueueLock unlock];
@@ -338,20 +336,19 @@
 
 - (void)purgeTiles:(NSUInteger)count
 {
-    RMLog(@"purging %u old tiles from the db cache", count);
+    RMLog(@"purging %lu old tiles from the db cache", (unsigned long)count);
 
     [_writeQueueLock lock];
 
     [_queue inDatabase:^(FMDatabase *db)
      {
-         BOOL result = [db executeUpdate:@"DELETE FROM ZCACHE WHERE tile_hash IN (SELECT tile_hash FROM ZCACHE ORDER BY last_used LIMIT ?)", [NSNumber numberWithUnsignedInt:count]];
-         
+         BOOL result = [db executeUpdate:@"DELETE FROM ZCACHE WHERE tile_hash IN (SELECT tile_hash FROM ZCACHE ORDER BY last_used LIMIT ?)", [NSNumber numberWithUnsignedLongLong:count]];
+
          if (result)
              result = [db executeUpdate:@"VACUUM"];
-         
-         if (result == NO)
-             RMLog(@"Error purging cache");
 
+         if ( ! result)
+             RMLog(@"Error purging cache");
      }];
 
     [_writeQueueLock unlock];
@@ -373,9 +370,8 @@
              if (result)
                  result = [db executeUpdate:@"VACUUM"];
 
-             if (result == NO)
+             if ( ! result)
                  RMLog(@"Error purging cache");
-
          }];
 
         [_writeQueueLock unlock];
@@ -394,11 +390,11 @@
         [_queue inDatabase:^(FMDatabase *db)
          {
              BOOL result = [db executeUpdate:@"DELETE FROM ZCACHE WHERE cache_key = ?", cacheKey];
-             
+
              if (result)
                  result = [db executeUpdate:@"VACUUM"];
 
-             if (result == NO)
+             if ( ! result)
                  RMLog(@"Error purging cache");
          }];
 
